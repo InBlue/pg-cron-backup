@@ -53,16 +53,21 @@ async function dumpPG() {
 	});
 }
 
-const job = new CronJob(process.env.CRON_SCHEDULE, async () => {
-	try {
-		console.log("Creating new backup...");
-		await dumpPG();
-		await upload();
-		console.log("Backup completed");
-	} catch (error) {
-		console.error(error);
-	}
-});
+const job = new CronJob(
+	process.env.CRON_SCHEDULE,
+	async () => {
+		try {
+			console.log("Creating new backup...");
+			await dumpPG();
+			await upload();
+			console.log("Backup completed");
+		} catch (error) {
+			console.error(error);
+		}
+	},
+	null,
+	true
+);
 
 job.start();
 console.log("Backup job started");
