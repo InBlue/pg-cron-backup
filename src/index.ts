@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import { CronJob } from "cron";
 import { createReadStream } from "fs";
 import { basename } from "path";
+import { error, log } from "./logger";
 
 if (
 	!process.env.ACCESS_KEY_ID ||
@@ -15,7 +16,7 @@ if (
 
 export async function upload() {
 	try {
-		console.log("Beginning upload...");
+		log("Beginning upload...");
 		const client = new S3({
 			endpoint: process.env.HOST,
 			accessKeyId: process.env.ACCESS_KEY_ID!,
@@ -29,45 +30,43 @@ export async function upload() {
 		const PutObject = {
 			Bucket: process.env.BUCKET!,
 			Key: basename(process.env.FOLDER ?? "/" + `backup-${date}.tar.gz`),
-			body: file,
+			Body: file,
 		};
 
 		await client.putObject(PutObject).promise();
-		console.log("Upload completed");
+		log("Upload completed");
 	} catch (e) {
-		console.error(`Upload error: ${(e as Error).message}`);
+		error(`Upload error: ${(e as Error).message}`);
 	}
 }
 
 async function dumpPG() {
-	console.log("Dumping postgres database to file...");
+	log("Dumping postgres database to file...");
 	await new Promise((resolve, reject) => {
 		exec(
 			`pg_dump ${process.env.POSTGRES_URI} -F t | gzip > local-backup.tar.gz`,
 			(err) => {
 				if (err) return reject(JSON.stringify(err));
-				console.log("Finished dump");
+				log("Finished dump");
 				resolve(null);
 			}
 		);
 	});
 }
 
-const job = new CronJob(
-	process.env.CRON_SCHEDULE,
-	async () => {
-		try {
-			console.log("Creating new backup...");
-			await dumpPG();
-			await upload();
-			console.log("Backup completed");
-		} catch (error) {
-			console.error(error);
-		}
-	},
-	null,
-	true
-);
+async function _job() {
+	try {
+		log("Creating new backup...");
+		await dumpPG();
+		await upload();
+		log("Backup completed");
+	} catch (error: any) {
+		error(error);
+	}
+}
+
+const job = new CronJob(process.env.CRON_SCHEDULE, _job, null, true);
 
 job.start();
-console.log("Backup job started");
+log("Backup job started");
+_job();
