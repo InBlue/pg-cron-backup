@@ -1,4 +1,5 @@
-if (!process.env.TZ) "Please include a TZ environment variable, e.g. America/Los_Angeles";
+if (!process.env.TZ)
+	console.error("Please include a TZ environment variable, e.g. America/Los_Angeles");
 
 const intlOpts = Intl.DateTimeFormat().resolvedOptions();
 const tz = process.env.TZ ?? intlOpts.timeZone;
